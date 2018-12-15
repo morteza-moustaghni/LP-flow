@@ -275,8 +275,8 @@ for i in f_abriker:
 		for d in p_rodukter:
 			key = (i,j,d)
 			if x_ijd[(key)].x > 0:
-				flo_i_j_d.write(a, 0, j)
-				flo_i_j_d.write(a, 1, k)				
+				flo_i_j_d.write(a, 0, i)
+				flo_i_j_d.write(a, 1, j)				
 				flo_i_j_d.write(a, 2, d)
 				flo_i_j_d.write(a, 3, x_ijd[(key)].x)
 				a += 1
@@ -288,7 +288,7 @@ for j in d_istributionsterminaler:
 			key = (j,l,d)
 			if x_jld[(key)].x > 0:
 				flo_j_l_d.write(a, 0, j)
-				flo_j_l_d.write(a, 1, k)				
+				flo_j_l_d.write(a, 1, l)				
 				flo_j_l_d.write(a, 2, d)
 				flo_j_l_d.write(a, 3, x_jld[(key)].x)
 				a += 1
@@ -300,7 +300,7 @@ for j in d_istributionsterminaler:
 			key = (j,i,d)
 			if x_jid[(key)].x > 0:
 				flo_j_i_d.write(a, 0, j)
-				flo_j_i_d.write(a, 1, k)				
+				flo_j_i_d.write(a, 1, i)				
 				flo_j_i_d.write(a, 2, d)
 				flo_j_i_d.write(a, 3, x_jid[(key)].x)
 				a += 1
