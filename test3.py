@@ -88,12 +88,13 @@ x_jld = {}
 f_j = {}
 a_l = {}
 
-
+# Making new gurobi variables for flow to and from distribution terminals from and to factories of each product
 for i in f_abriker:
 	for j in d_istributionsterminaler:
 		for d in p_rodukter:
 			x_ijd[(i, j, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 			x_jid[(j, i, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
+
 
 for j in d_istributionsterminaler:
 	for k in r_egioner:
@@ -139,11 +140,19 @@ for i in f_abriker:
 for i in f_abriker:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) == xg_id[i, d])
-		
+
+# 10
+for j in d_istributionsterminaler:
+	for d in p_rodukter:
+		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker) == 0)		
 
 # SL
 M = 1000000000
 
+# 11
+for j in d_istributionsterminaler:
+	for d in p_rodukter:
+		gurobimodel.addConstr(quicksum(0.4*x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
 
 # 12
 for j in d_istributionsterminaler:
@@ -154,42 +163,33 @@ for j in d_istributionsterminaler:
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
+# 14
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
-# 14
+# 14,5
+for j in d_istributionsterminaler:
+	gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for l in d_estruktionsterminaler for d in p_rodukter) <= f_j[(j)] * M)
+
+# 15
 for j in d_istributionsterminaler:
 	for l in d_estruktionsterminaler:
 		gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for d in p_rodukter) <= a_l[(l)] * M)
 
-# 15
+# 16
 for k in r_egioner:
 	gurobimodel.addConstr(quicksum(y_jk[(j, k)] for j in d_istributionsterminaler) == 1)
 
-
+# 17
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) - quicksum(x_jkd[(j, k, d)] for k in r_egioner for d in p_rodukter) == 0)
 
-
-# test constraint 5 
+# 18
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jkd[j,k,d] for k in r_egioner) == 0)
 
-# test constraint 6
-for j in d_istributionsterminaler:
-	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(0.4*x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
-
-# test 7 constriant 
-for j in d_istributionsterminaler:
-	for d in p_rodukter:
-		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker) == 0)
-
-
-
-
-# 18 
+# 19
 for k in r_egioner:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for j in d_istributionsterminaler) == behov_per_region[(k, d)])
