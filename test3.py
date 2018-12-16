@@ -75,7 +75,7 @@ while i < wb_dist_dest.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO
 #######################################################################	PART 2	##############################################################
 gurobimodel = Model()
 
-#Variabler123321
+#Variabler123321123
 xg_id = {}
 xn_id = {}
 x_ijd = {}
