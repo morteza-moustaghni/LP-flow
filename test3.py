@@ -137,7 +137,7 @@ for i in f_abriker:
 # 9
 for i in f_abriker:
 	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) == xg_id[i, d])
+		gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for j in d_istributionsterminaler) == xg_id[(i, d)])
 		
 # 10
 for d in p_rodukter:
