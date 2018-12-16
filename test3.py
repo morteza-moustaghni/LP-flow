@@ -77,7 +77,7 @@ while i < wb_dist_dest.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO
 
 gurobimodel = Model()
 
-#Variabler123321123
+# Control variables
 xg_id = {}
 xn_id = {}
 x_ijd = {}
@@ -146,7 +146,7 @@ for j in d_istributionsterminaler:
 	for d in p_rodukter:
 		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker) == 0)		
 
-# SL
+# SLBD
 M = 1000000000
 
 # 11
@@ -159,7 +159,7 @@ for j in d_istributionsterminaler:
 	for k in r_egioner:
 		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for d in p_rodukter) <= y_jk[(j, k)] * M)
 
-# 13     -------
+# 13
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
@@ -167,22 +167,18 @@ for j in d_istributionsterminaler:
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
-# 14,5
+# 15
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for l in d_estruktionsterminaler for d in p_rodukter) <= f_j[(j)] * M)
 
-# 15
+# 16
 for j in d_istributionsterminaler:
 	for l in d_estruktionsterminaler:
 		gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for d in p_rodukter) <= a_l[(l)] * M)
 
-# 16
+# 17
 for k in r_egioner:
 	gurobimodel.addConstr(quicksum(y_jk[(j, k)] for j in d_istributionsterminaler) == 1)
-
-# 17
-for j in d_istributionsterminaler:
-	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) - quicksum(x_jkd[(j, k, d)] for k in r_egioner for d in p_rodukter) == 0)
 
 # 18
 for j in d_istributionsterminaler:
@@ -212,7 +208,7 @@ p_roduction_cost = LinExpr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for j in
 gurobimodel.setObjective(f_to_di + di_to_re + di_to_de + di_to_f + f_cost_di + f_cost_de + p_roduction_cost, GRB.MINIMIZE)
 gurobimodel.optimize()
 
-
+############################################################# Part 3 #######################################################
 
 # validering 
 validering = xlwt.Workbook()
@@ -280,21 +276,6 @@ for j in d_istributionsterminaler:
 				flo_j_i_d.write(a, 2, d)
 				flo_j_i_d.write(a, 3, x_jid[(key)].x)
 				a += 1
-
-    
-
-a = 0
-for i in f_abriker:
-	for d in p_rodukter:
-		key = (i,d)
-		print(key,quicksum(x_ijd[i,j,d].x for j in d_istributionsterminaler))
-        #print(key,xg_id[i,d].x, xn_id[i,d].x)
-
-for j in d_istributionsterminaler:
-	for d in p_rodukter:
-		key = (j,d)
-		print(key,quicksum(x_jkd[j,k,d].x for k in r_egioner))
-
 
 a = 0
 for d in p_rodukter:
