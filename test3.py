@@ -2,6 +2,7 @@ import xlrd, xlwt
 from gurobipy import *
 
 ##################################################################	PART 1	##################################################################
+
 book = xlrd.open_workbook('input2.xlsx')
 wb_terminaler = book.sheet_by_name('Terminaler')
 wb_destruktion = book.sheet_by_name('Destruktionspl')
@@ -73,6 +74,7 @@ while i < wb_dist_dest.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO
 	i += 1
 
 #######################################################################	PART 2	##############################################################
+
 gurobimodel = Model()
 
 #Variabler123321123
@@ -138,17 +140,9 @@ for i in f_abriker:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) == xg_id[i, d])
 		
-# 10
-for d in p_rodukter:
-	for j in d_istributionsterminaler:
-		gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for i in f_abriker) - 0.6*quicksum(x_ijd[(i, j, d)] for i in f_abriker) == 0)
-
 
 # SL
 M = 1000000000
-
-# 11
-#urobimodel.addConstr(quicksum(x_jld[(j, l, d)] for j in d_istributionsterminaler for l in d_estruktionsterminaler for d in p_rodukter) - 0.4 * quicksum(x_ijd[(i, j, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter) == 0)
 
 
 # 12
@@ -160,6 +154,9 @@ for j in d_istributionsterminaler:
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
+for j in d_istributionsterminaler:
+	gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
+
 # 14
 for j in d_istributionsterminaler:
 	for l in d_estruktionsterminaler:
@@ -168,26 +165,11 @@ for j in d_istributionsterminaler:
 # 15
 for k in r_egioner:
 	gurobimodel.addConstr(quicksum(y_jk[(j, k)] for j in d_istributionsterminaler) == 1)
-# 16
-#for i in f_abriker:
-#	for d in p_rodukter:
-#		gurobimodel.addConstr(xg_id[i, d] <= kapacitet_fabrik_produkt[i, d])
-# 17
+
+
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) - quicksum(x_jkd[(j, k, d)] for k in r_egioner for d in p_rodukter) == 0)
 
-
-# test constraint 
-#for j in d_istributionsterminaler:
-#	gurobimodel.addConstr(0.4*quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) - quicksum(x_jld[(j, l, d)] for l in d_estruktionsterminaler for d in p_rodukter) == 0)
-
-#test constraint 2 
-#for j in d_istributionsterminaler:
-#	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d )] for i in f_abriker for d in p_rodukter) - quicksum(x_jid[(j, i, d)] for i in f_abriker for d in p_rodukter) == 0)
-
-# test cobstraubt 3 
-for d in p_rodukter:
-	gurobimodel.addConstr(quicksum(xg_id[i,d] for i in f_abriker) + quicksum(xn_id[i,d] for i in f_abriker) == quicksum(behov_per_region[k,d] for k in r_egioner))
 
 # test constraint 5 
 for j in d_istributionsterminaler:
@@ -197,12 +179,14 @@ for j in d_istributionsterminaler:
 # test constraint 6
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum( 0.4*x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
+		gurobimodel.addConstr(quicksum(0.4*x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
 
 # test 7 constriant 
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
-		gurobimodel.addConstr( 0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker) == 0)
+		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker) == 0)
+
+
 
 
 # 18 
@@ -228,15 +212,7 @@ p_roduction_cost = LinExpr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for j in
 gurobimodel.setObjective(f_to_di + di_to_re + di_to_de + di_to_f + f_cost_di + f_cost_de + p_roduction_cost, GRB.MINIMIZE)
 gurobimodel.optimize()
 
-#antal_y = quicksum(y_jk[(j, k)].x for j in d_istributionsterminaler for k in r_egioner)
-#antal_f = quicksum(f_j[j].x for j in d_istributionsterminaler)
-#alberto = quicksum(x_ijd[i,j,d].x for i in f_abriker for j in d_istributionsterminaler for d p_rodukter)
 
-#print(antal_y)
-#print(antal_f)
-#print(alberto)
-
-########################################################### PART 3 ##########################################################
 
 # validering 
 validering = xlwt.Workbook()
@@ -304,7 +280,22 @@ for j in d_istributionsterminaler:
 				flo_j_i_d.write(a, 2, d)
 				flo_j_i_d.write(a, 3, x_jid[(key)].x)
 				a += 1
- 
+
+    
+
+a = 0
+for i in f_abriker:
+	for d in p_rodukter:
+		key = (i,d)
+		print(key,quicksum(x_ijd[i,j,d].x for j in d_istributionsterminaler))
+        #print(key,xg_id[i,d].x, xn_id[i,d].x)
+
+for j in d_istributionsterminaler:
+	for d in p_rodukter:
+		key = (j,d)
+		print(key,quicksum(x_jkd[j,k,d].x for k in r_egioner))
+
+
 a = 0
 for d in p_rodukter:
 	for i in f_abriker:
