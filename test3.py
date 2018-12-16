@@ -2,7 +2,6 @@ import xlrd, xlwt
 from gurobipy import *
 
 ##################################################################	PART 1	##################################################################
-
 book = xlrd.open_workbook('input2.xlsx')
 wb_terminaler = book.sheet_by_name('Terminaler')
 wb_destruktion = book.sheet_by_name('Destruktionspl')
@@ -74,7 +73,6 @@ while i < wb_dist_dest.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO
 	i += 1
 
 #######################################################################	PART 2	##############################################################
-
 gurobimodel = Model()
 
 #Variabler123321
@@ -238,6 +236,7 @@ gurobimodel.optimize()
 #print(antal_f)
 #print(alberto)
 
+########################################################### PART 3 ##########################################################
 
 # validering 
 validering = xlwt.Workbook()
