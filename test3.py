@@ -1,7 +1,7 @@
 import xlrd, xlwt
 from gurobipy import *
 
-##################################################################	PART 1	##################################################################
+#####################################################	PART 1	###########################################################
 
 book = xlrd.open_workbook('input2.xlsx')
 wb_terminaler = book.sheet_by_name('Terminaler')
@@ -60,31 +60,30 @@ while i < wb_fabrik_dist.nrows: # COST OF TRANSPORTATION, FACTORY TO DISTRIBUTIO
 	i += 1
 
 i = 1
-while i < wb_distribution.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO CUSTOMER
-	key = (wb_distribution.cell_value(i, 0), wb_distribution.cell_value(i, 1))
-	value = wb_distribution.cell_value(i, 2)
-	kostnad_dist_region[(key)] = value
-	i += 1
-
-i = 1
 while i < wb_dist_dest.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO DESTRUCTION TERMINAL
 	key = (wb_dist_dest.cell_value(i, 0), wb_dist_dest.cell_value(i, 1))
 	value = wb_dist_dest.cell_value(i, 2) * wb_dist_dest.cell_value(i, 3)
 	kostnad_dist_dest[(key)] = value
 	i += 1
 
+i = 1
+while i < wb_distribution.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL TO CUSTOMER
+	key = (wb_distribution.cell_value(i, 0), wb_distribution.cell_value(i, 1))
+	value = wb_distribution.cell_value(i, 2)
+	kostnad_dist_region[(key)] = value
+	i += 1
+
 #######################################################################	PART 2	##############################################################
+# Gurobi optimization
 
 gurobimodel = Model()
 
-# Control variables
-xg_id = {}
-xn_id = {}
 x_ijd = {}
 x_jid = {}
-y_jk = {}
-x_jkd = {}
+x_jkd = {} #Triggar y_jk
 x_jld = {}
+
+y_jk = {}
 f_j = {}
 a_l = {}
 
@@ -94,7 +93,6 @@ for i in f_abriker:
 		for d in p_rodukter:
 			x_ijd[(i, j, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 			x_jid[(j, i, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
-
 
 for j in d_istributionsterminaler:
 	for k in r_egioner:
@@ -119,76 +117,65 @@ for l in d_estruktionsterminaler:
 	value = gurobimodel.addVar(lb=0, ub=1, vtype=GRB.BINARY)
 	a_l[(key)] = value
 
-for i in f_abriker:
-	for d in p_rodukter:
-		key = (i, d)
-		xn_id[(key)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
-		xg_id[(key)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
-
 # Constraints
 # 7
 for i in f_abriker:
 	for d in p_rodukter:
-		gurobimodel.addConstr(xg_id[(i, d)] + xn_id[(i, d)] <= kapacitet_fabrik_produkt[i, d])
+		gurobimodel.addConstr(quicksum(x_ijd[i, j, d] for j in d_istributionsterminaler) <= kapacitet_fabrik_produkt[i, d])
+
+# HERE WE MAKE SURE OLD PRODUCTS ARE ONLY SENT TO FACTORIES THAT CAN REPRODUCE THEM. ASSUMING THIS, WE CAN EXPECT THE PRODUCTION COST OF THOSE TO BE HALVED.
+for i in f_abriker:
+	for d in p_rodukter:
+		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) <= kapacitet_fabrik_produkt[i, d])
 
 # 8
-for i in f_abriker:
-	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for j in d_istributionsterminaler) - xg_id[(i, d)] - xn_id[(i, d)] == 0)  
-
-# 9
-for i in f_abriker:
-	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) - xg_id[i, d] == 0)
-
-# 10
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
-		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker) == 0)		
+		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker ) == 0)		
+
+# 9
+for j in d_istributionsterminaler:
+	for d in p_rodukter:
+		gurobimodel.addConstr(0.4*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
 
 # SLBD
 M = 1000000000
 
-# 11
-for j in d_istributionsterminaler:
-	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(0.4*x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
-
-# 12
+# 10
 for j in d_istributionsterminaler:
 	for k in r_egioner:
 		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for d in p_rodukter) <= y_jk[(j, k)] * M)
 
-# 13
+# 11
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
-# 14
+# 12
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
-# 15
+# 13
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for l in d_estruktionsterminaler for d in p_rodukter) <= f_j[(j)] * M)
 
-# 16
+# 14
 for j in d_istributionsterminaler:
 	for l in d_estruktionsterminaler:
 		gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for d in p_rodukter) <= a_l[(l)] * M)
 
-# 17
+# 15
 for k in r_egioner:
 	gurobimodel.addConstr(quicksum(y_jk[(j, k)] for j in d_istributionsterminaler) == 1)
 
-# 18
+# 16
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jkd[j,k,d] for k in r_egioner) == 0)
+		gurobimodel.addConstr(quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jkd[j, k, d] for k in r_egioner) == 0)
 
-# 19
+# 17
 for k in r_egioner:
 	for d in p_rodukter:
-		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for j in d_istributionsterminaler) == behov_per_region[(k, d)])
+		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for j in d_istributionsterminaler) - behov_per_region[(k, d)] == 0)
 
 # MALFUNKTION:
 f_to_di = LinExpr(quicksum(kostnad_fabrik_dist[i, j] * x_ijd[(i, j, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter))
@@ -203,14 +190,16 @@ f_cost_di = LinExpr(quicksum(1000000 * f_j[(j)] for j in d_istributionsterminale
 
 f_cost_de = LinExpr(quicksum(50000 * a_l[(l)] for l in d_estruktionsterminaler))
 
-p_roduction_cost = LinExpr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter) - 0.5 * quicksum(xg_id[(i, d)] for i in f_abriker for d in p_rodukter))
+p_roduction_cost = LinExpr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter))
 
-gurobimodel.setObjective(f_to_di + di_to_re + di_to_de + di_to_f + f_cost_di + f_cost_de + p_roduction_cost, GRB.MINIMIZE)
+prod_cost_old = LinExpr(-0.5*quicksum(x_jid[(j, i, d)] for j in d_istributionsterminaler for i in f_abriker for d in p_rodukter))
+
+gurobimodel.setObjective(f_to_di + di_to_re + di_to_de + di_to_f + f_cost_di + f_cost_de + p_roduction_cost + prod_cost_old, GRB.MINIMIZE)
 gurobimodel.optimize()
 
 ############################################################# Part 3 #######################################################
+# Validation
 
-# validering 
 validering = xlwt.Workbook()
 con_j_k = validering.add_sheet('con_j_k')
 flo_j_k_d = validering.add_sheet('flo_j_k_d')
@@ -276,21 +265,6 @@ for j in d_istributionsterminaler:
 				flo_j_i_d.write(a, 2, d)
 				flo_j_i_d.write(a, 3, x_jid[(key)].x)
 				a += 1
-
-a = 0
-for d in p_rodukter:
-	for i in f_abriker:
-		key = (i,d)
-		if xn_id[(key)].x > 0:
-			num_xn.write(a, 0, i)
-			num_xn.write(a, 1, d)
-			num_xn.write(a, 2, xn_id[(key)].x)
-			a += 1
-		if xg_id[(key)].x > 0:
-			num_xg.write(a, 0, i)
-			num_xg.write(a, 1, d)
-			num_xg.write(a, 2, xg_id[(key)].x)
-			a += 1
 
 final = validering.add_sheet('Final')
 final.write(0, 0, gurobimodel.getAttr(GRB.Attr.ObjVal))
