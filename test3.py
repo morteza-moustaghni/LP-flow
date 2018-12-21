@@ -1,8 +1,12 @@
+# Python 2.7.0
+# Importing required libraries
 import xlrd, xlwt
 from gurobipy import *
 
 #####################################################	PART 1	###########################################################
+# Reading input data
 
+# Opening input file and the workbooks within
 book = xlrd.open_workbook('input2.xlsx')
 wb_terminaler = book.sheet_by_name('Terminaler')
 wb_destruktion = book.sheet_by_name('Destruktionspl')
@@ -15,6 +19,7 @@ wb_behov = book.sheet_by_name('Behov')
 wb_regioner = book.sheet_by_name('Regioner')
 wb_fabrik_dist = book.sheet_by_name('Distans1')
 
+# Lists for names of products, factories, distribution terminals, regions and destruction terminals.
 p_rodukter = [] # p
 f_abriker = [] # i
 d_istributionsterminaler = [] # j
@@ -76,24 +81,25 @@ while i < wb_distribution.nrows: # COST OF TRANSPORTATION, DISTRIBUTION TERMINAL
 #######################################################################	PART 2	##############################################################
 # Gurobi optimization
 
-gurobimodel = Model()
+gurobimodel = Model() # Gurobi Model
 
-x_ijd = {}
-x_jid = {}
-x_jkd = {} #Triggar y_jk
-x_jld = {}
+x_ijd = {} # Flow between factory i and distribution terminal j of product d
+x_jid = {} # Flow between distribution terminal j and factory i of product d
+x_jkd = {} # Flow between distribution terminal j and region k of product d
+x_jld = {} # Flow between distribution terminal j and destruction terminal l of product d
 
-y_jk = {}
-f_j = {}
-a_l = {}
+y_jk = {} # Binary variables that will be triggered as soon as there is flow between distribution terminal j and region k
+f_j = {} # Binary variables that will be triggered as soon as there is flow to or from distribution terminal j
+a_l = {} # Binary variables that will be triggered as soon as there is flow to destruction terminal l
 
-# Making new gurobi variables for flow to and from distribution terminals from and to factories of each product
+# Control variables for flows between factories and distribution terminals
 for i in f_abriker:
 	for j in d_istributionsterminaler:
 		for d in p_rodukter:
 			x_ijd[(i, j, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 			x_jid[(j, i, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 
+# Control variables for flow between dist. terminal to regions 
 for j in d_istributionsterminaler:
 	for k in r_egioner:
 		key = (j, k)
@@ -101,17 +107,20 @@ for j in d_istributionsterminaler:
 		for d in p_rodukter:
 			x_jkd[(j, k, d)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 
+# Control variables for flow between distribution terminals and destruction terminals
 for j in d_istributionsterminaler:
 	for l in d_estruktionsterminaler:
 		for d in p_rodukter:
 			key = (j, l, d)
 			x_jld[(key)] = gurobimodel.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 
+# Control variables for triggering cost of having distribution terminal j open
 for j in d_istributionsterminaler:
 	key = j
 	value = gurobimodel.addVar(lb=0, ub=1, vtype=GRB.BINARY)
 	f_j[(key)] = value
 
+# Control variables for triggering cost of having destruction terminal l open
 for l in d_estruktionsterminaler:
 	key = l
 	value = gurobimodel.addVar(lb=0, ub=1, vtype=GRB.BINARY)
@@ -123,7 +132,7 @@ for i in f_abriker:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_ijd[i, j, d] for j in d_istributionsterminaler) <= kapacitet_fabrik_produkt[i, d])
 
-# HERE WE MAKE SURE OLD PRODUCTS ARE ONLY SENT TO FACTORIES THAT CAN REPRODUCE THEM. ASSUMING THIS, WE CAN EXPECT THE PRODUCTION COST OF THOSE TO BE HALVED.
+# HERE WE MAKE SURE OLD PRODUCTS ARE ONLY RETURNED TO FACTORIES THAT CAN REPRODUCE THEM. ASSUMING THIS, WE CAN EXPECT THE PRODUCTION COST OF THOSE TO BE HALVED.
 for i in f_abriker:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) <= kapacitet_fabrik_produkt[i, d])
