@@ -127,80 +127,88 @@ for l in d_estruktionsterminaler:
 	a_l[(key)] = value
 
 # Constraints
-# 7
+# 7 Making sure each factory can only produce the amount of the products it's able to produce
 for i in f_abriker:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_ijd[i, j, d] for j in d_istributionsterminaler) <= kapacitet_fabrik_produkt[i, d])
 
-# HERE WE MAKE SURE OLD PRODUCTS ARE ONLY RETURNED TO FACTORIES THAT CAN REPRODUCE THEM. ASSUMING THIS, WE CAN EXPECT THE PRODUCTION COST OF THOSE TO BE HALVED.
+# 7,5 HERE WE MAKE SURE OLD PRODUCTS ARE ONLY RETURNED TO FACTORIES THAT CAN REPRODUCE THEM. ASSUMING THIS, WE CAN EXPECT THE PRODUCTION COST OF THOSE TO BE HALVED.
 for i in f_abriker:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_jid[j, i, d] for j in d_istributionsterminaler) <= kapacitet_fabrik_produkt[i, d])
 
-# 8
+# 8 Making sure 60% of flow out of factories is sent back as reusable products
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
 		gurobimodel.addConstr(0.6*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jid[j,i,d] for i in f_abriker ) == 0)		
 
-# 9
+# 9 Making sure 40% of flow out of factories is sent to destruction
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
 		gurobimodel.addConstr(0.4*quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jld[j,l,d] for l in d_estruktionsterminaler) == 0)
 
-# SLBD
+# Gigantic number
 M = 1000000000
 
-# 10
+# 10 Triggering binary variable for links to regions as soon as there is flow there from any distribution terminal
 for j in d_istributionsterminaler:
 	for k in r_egioner:
 		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for d in p_rodukter) <= y_jk[(j, k)] * M)
 
-# 11
+# 11 Triggering binary variable for flows to distribution terminals from factories
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
-# 12
+# 12 Triggering binary variable for flows to factories from distribution terminals
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jid[(j, i, d)] for i in f_abriker for d in p_rodukter) <= f_j[(j)] * M)
 
-# 13
+# 13 Triggering binary variables for flows to destruction terminals from distribution terminals, triggers cost of distribution terminal
 for j in d_istributionsterminaler:
 	gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for l in d_estruktionsterminaler for d in p_rodukter) <= f_j[(j)] * M)
 
-# 14
+# 14 Triggering binary variables for flows to destruction terminals from distribution terminals, triggers cost of destruction terminal
 for j in d_istributionsterminaler:
 	for l in d_estruktionsterminaler:
 		gurobimodel.addConstr(quicksum(x_jld[(j, l, d)] for d in p_rodukter) <= a_l[(l)] * M)
 
-# 15
+# 15 Making sure each customer can only recieve flow from one distribution terminal
 for k in r_egioner:
 	gurobimodel.addConstr(quicksum(y_jk[(j, k)] for j in d_istributionsterminaler) == 1)
 
-# 16
+# 16 Flows into distribution terminals and flow out of them are equal
 for j in d_istributionsterminaler:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_ijd[i,j,d] for i in f_abriker) - quicksum(x_jkd[j, k, d] for k in r_egioner) == 0)
 
-# 17
+# 17 Flows out of distribution terminals to regions is equal to demand in each region of each product.
 for k in r_egioner:
 	for d in p_rodukter:
 		gurobimodel.addConstr(quicksum(x_jkd[(j, k, d)] for j in d_istributionsterminaler) - behov_per_region[(k, d)] == 0)
 
 # MALFUNKTION:
+# Cost of transportation for flows from factories to distribution terminals
 f_to_di = LinExpr(quicksum(kostnad_fabrik_dist[i, j] * x_ijd[(i, j, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter))
 
+# Distribution cost for flows from distribution terminals to regions
 di_to_re = LinExpr(quicksum(kostnad_dist_region[j, k] * y_jk[(j, k)] for j in d_istributionsterminaler for k in r_egioner))
 
+# Cost of transportation for flows between distribution terminals and destruction terminals
 di_to_de = LinExpr(quicksum(kostnad_dist_dest[j, l] * x_jld[(j, l, d)] for j in d_istributionsterminaler for l in d_estruktionsterminaler for d in p_rodukter))
 
+# Cost of transportation for returning products
 di_to_f = LinExpr(quicksum(kostnad_fabrik_dist[i, j] * x_jid[(j, i, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter))
 
+# Cost of having distribution terminals open
 f_cost_di = LinExpr(quicksum(1000000 * f_j[(j)] for j in d_istributionsterminaler))
 
+# Cost of having destruction terminals open
 f_cost_de = LinExpr(quicksum(50000 * a_l[(l)] for l in d_estruktionsterminaler))
 
+# Cost of production
 p_roduction_cost = LinExpr(quicksum(x_ijd[(i, j, d)] for i in f_abriker for j in d_istributionsterminaler for d in p_rodukter))
 
+# Removing half the cost of production for reusable products
 prod_cost_old = LinExpr(-0.5*quicksum(x_jid[(j, i, d)] for j in d_istributionsterminaler for i in f_abriker for d in p_rodukter))
 
 gurobimodel.setObjective(f_to_di + di_to_re + di_to_de + di_to_f + f_cost_di + f_cost_de + p_roduction_cost + prod_cost_old, GRB.MINIMIZE)
