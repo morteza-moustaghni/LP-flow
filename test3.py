@@ -223,8 +223,6 @@ flo_j_k_d = validering.add_sheet('flo_j_k_d')
 flo_i_j_d = validering.add_sheet('flo_i_j_d')
 flo_j_l_d = validering.add_sheet('flo_j_l_d')
 flo_j_i_d = validering.add_sheet('flo_j_i_d')
-num_xg = validering.add_sheet('num_xg')
-num_xn = validering.add_sheet('num_xn')
 
 a = 0
 for j in d_istributionsterminaler:
