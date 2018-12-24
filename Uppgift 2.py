@@ -20,7 +20,7 @@ wb_regioner = book.sheet_by_name('Regioner')
 wb_fabrik_dist = book.sheet_by_name('Distans1')
 
 # Lists for names of products, factories, distribution terminals, regions and destruction terminals.
-p_rodukter = [] # p
+p_rodukter = [] # d
 f_abriker = [] # i
 d_istributionsterminaler = [] # j
 r_egioner = [] # k
